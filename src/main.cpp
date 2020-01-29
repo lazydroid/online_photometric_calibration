@@ -143,7 +143,9 @@ int run_batch_calibration(Settings *run_settings,std::vector<double> gt_exp_time
     Tracker tracker(run_settings->tracker_patch_size,run_settings->nr_active_features,run_settings->nr_pyramid_levels,&database);
     
     int num_images = image_reader.getNumImages();
-    
+
+    std::vector<double> exposures;
+
     // Run over all input images, track the new image, estimate exposure time and optimize other parameters in the background
     for(int i = run_settings->start_image_index; i < num_images && (run_settings->end_image_index < 0 || i < run_settings->end_image_index); i++)
     {
@@ -167,6 +169,8 @@ int run_batch_calibration(Settings *run_settings,std::vector<double> gt_exp_time
         double exposure_time = exposure_estimator.estimateExposureTime();
         database.m_tracked_frames.at(database.m_tracked_frames.size()-1).m_exp_time = exposure_time;
         database.visualizeRapidExposureTimeEstimates(vis_exponent);
+
+		exposures.push_back( exposure_time );
 
         // Remove the exposure time from the radiance estimates
         std::vector<Feature*>* features = &database.m_tracked_frames.at(database.m_tracked_frames.size()-1).m_features;
@@ -214,6 +218,16 @@ int run_batch_calibration(Settings *run_settings,std::vector<double> gt_exp_time
             return -1;
         }
     }
+
+	FILE* out = fopen( "exposures.txt", "w" );
+	if( out == NULL ) {
+		printf( "Unable to open: exposures.txt" );
+	} else {
+		for( int i=0; i<exposures.size(); i++) {
+			fprintf( out, "%06d %.3f %.5f\n", i, 1461161056 + i*0.02, exposures[i]*3 );
+		}
+		fclose( out );
+	}
     
     return 0;
 }
